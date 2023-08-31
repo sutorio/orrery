@@ -1,0 +1,62 @@
+[package]
+name = "orrery"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+# Core
+# 1. tokio: async runtime
+# 2. tower: async service abstractions
+# 3. tower-http: http service abstractions
+# 4. axum: web framework
+tokio = { version = "1.32.0", features = ["full"] }     # [1]
+tower = "0.4.13"                                        # [2]
+tower-http = { version = "0.4.3", features = ["full"] } # [3]
+axum = { version = "0.6.20", features = ["macros"] }    # [4]
+
+# Database
+# 1. sqlx: database driver. NOTE: the sqlx-cli tool should be installed.
+sqlx = { version = "0.7.1", default-features = false, features = [
+	"runtime-tokio",
+	"tls-rustls",
+	"sqlite",
+	"macros",
+	"migrate",
+] } # [1]
+
+# Logging
+# 1. tracing: stuctured logging framework
+# 2. tracing-subscriber: structured logging subscriber, provides the boilerplate required to integrate with axum
+tracing = "0.1.37"                                                     # [1]
+tracing-subscriber = { version = "0.3.17", features = ["env-filter"] } # [2]
+
+# Error handling
+# 1. anyhow: simple error handling
+# 2. thiserror: derive macro for granular wrapping/mapping of specific errors
+anyhow = "1.0.75"    # [1]
+thiserror = "1.0.47" # [2]
+
+# Templating
+# 1. askama: compile-time templates, based on Jinja
+# 2. askama-axum: axum integration for askama. NOTE: this is required even though the axum feature is active in askama. 
+askama = { version = "0.12.0", default-features = false, features = [
+	"with-axum",
+	"mime",
+	"mime_guess",
+] } # [1]
+askama_axum = "0.3.0" # [2]
+
+# Configuration
+# 1. clap: command line argument parsing
+# 2. dotenvy: environment variable parsing
+clap = { version = "4.3.23", features = ["derive", "env"] }
+dotenvy = "0.15.7"
+
+# Serialization
+# 1. serde: de facto standard serialization framework
+# 2. serde_json: serde implementation for JSON
+serde = { version = "1.0.185", features = ["derive"] } # [1]
+serde_json = "1.0.105"                                 # [2]
+
+[dev-dependencies]
+axum-test-helper = "0.3.0"

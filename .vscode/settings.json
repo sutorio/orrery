@@ -1,0 +1,13 @@
+{
+  "editor.formatOnSave": true,
+  "editor.formatOnPaste": true,
+  "diffEditor.diffAlgorithm": "advanced",
+  "diffEditor.codeLens": true,
+  "editor.minimap.autohide": true,
+  "[javascript][javascriptreact][json][jsonc][markdown][typescript][typescriptreact]": {
+    "editor.defaultFormatter": "denoland.vscode-deno"
+  },
+  "[sql]": {
+    "editor.formatOnSave": false
+  }
+}
