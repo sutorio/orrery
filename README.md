@@ -1,5 +1,29 @@
 # Orrery <small>(Rust)</small>
 
+## TODO (keep adding to this)
+
+- [ ] API Routes + handlers
+  - [ ] Database pool creation/access
+  - [ ] Correct HTTP response for db constraint errors
+  - [ ] Correct HTTP response for borked/otherwise db
+  - [ ] Merged API routes
+  - [ ] Celestial bodies
+    - [x] table creation
+    - [ ] de/serialisable structs
+    - [ ] RESTful routes
+    - [ ] handlers with inlined db queries
+  - [x] Celestial regions
+    - [x] table creation
+    - [x] de/serialisable structs
+    - [x] RESTful routes
+    - [x] handlers with inlined db queries
+      - [ ] allow put/patch update handlers to return updated data
+  - [ ] Celestial subregions
+    - [x] table creation
+    - [ ] de/serialisable structs
+    - [ ] RESTful routes
+    - [ ] handlers with inlined db queries
+
 ## Overview
 
 My daughter Joanie's interest in planets led to the creation of a concise,

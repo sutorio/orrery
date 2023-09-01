@@ -16,62 +16,42 @@ mod config;
 /// [`thiserror`]: https://github.com/dtolnay/thiserror
 mod error;
 
-mod routes;
+/// Application state, which is passed to handlers and contains shared resources.
+mod state;
 
-mod data;
+/// Database connection pool, which is passed to handlers via the application state, along
+/// with the handlers themselves.
+mod datalayer;
 
-/// Public interface for `docket`
+/// Public interface for `orrery`
 pub use {
     config::{init_tracing, parse_app_config, AppConfig},
+    datalayer::DatabaseConnection,
     error::{AppError, AppResult},
+    state::AppState,
 };
 
 // -------------------------------------------------------------------------------
-// 2. Application state
-// -------------------------------------------------------------------------------
-
-/// Common application state
-/// Defines the `AppContext` struct, representing gloabl state, which allows handlers to
-/// access common application state.
-#[derive(Clone, axum::extract::FromRef)]
-pub struct AppContext {
-    /// The application config struct, defined in `src/config.rs`
-    config: AppConfig,
-    /// The database connection pool
-    db_pool: sqlx::sqlite::SqlitePool,
-}
-
-// -------------------------------------------------------------------------------
-// 3. Modularised functions used directly in the app `main` function
+// 2. Modularised functions used directly in the app `main` function
 // -------------------------------------------------------------------------------
 use anyhow::Context;
+use axum::Router;
 
 /// Construction of the Db pool is separated to make it easier to inject an in-memory verison into tests.
 /// For tests, the `DATABASE_URL` env var can be set to `:memory:`, which will cause the in-memory version to be used.
-pub async fn construct_db_pool(
-    database_url: &str,
-) -> AppResult<sqlx::sqlite::SqlitePool, anyhow::Error> {
-    sqlx::sqlite::SqlitePoolOptions::new()
-        .max_connections(10)
-        .connect(database_url)
-        .await
-        .context("Failed to connect to database")
-}
 
-pub async fn run_db_migrations(db_pool: &sqlx::sqlite::SqlitePool) -> anyhow::Result<()> {
-    sqlx::migrate!().run(db_pool).await?;
-
-    Ok(())
-}
-
-pub async fn serve(config: AppConfig, db_pool: sqlx::sqlite::SqlitePool) -> anyhow::Result<()> {
+pub async fn serve(
+    config: AppConfig,
+    db_conn: datalayer::DatabaseConnection,
+) -> anyhow::Result<()> {
     use std::net::{IpAddr, Ipv6Addr, SocketAddr};
-
     // REVIEW: is it fine to just use IPV6 here, or should there be an IPV4 fallback?
     let socket_address = SocketAddr::new(IpAddr::V6(Ipv6Addr::LOCALHOST), config.server_port);
 
     // Merge the API and static routes, attach the tracing layer, and make the application state available.
-    let router = routes::construct_routes(AppContext { config, db_pool });
+    let router = Router::new()
+        .merge(datalayer::api_routes())
+        .with_state(AppState { config, db_conn });
 
     tracing::debug!("server listening on {:?}", socket_address);
 
@@ -94,26 +74,34 @@ pub async fn serve(config: AppConfig, db_pool: sqlx::sqlite::SqlitePool) -> anyh
 ///! TODO: to keep the test setup separate from the main application code. That seems to strike
 ///! TODO: a reasonable balance.
 pub mod core_test_setup {
+    use crate::datalayer::DatabaseConnection;
+
     use super::*;
+    use axum::Router;
     use axum_test_helper::TestClient;
 
     /// Construct a test client, with a database connection pool pointing to an in-memory database
     /// and a set of routes.
     /// TODO: pass the `Router` and any database prep functions in as arguments.
     /// TODO: MUST CHECK THAT THE DATABASE IS DESTROYED ON PULLDOWN.
-    pub async fn construct_test_client() -> anyhow::Result<TestClient> {
+    pub async fn construct_test_client(
+        router: Router<AppState>,
+    ) -> AppResult<TestClient, anyhow::Error> {
         let config = parse_app_config();
-        let db_pool = construct_db_pool(":memory:").await?;
-        let router = routes::construct_routes(AppContext { config, db_pool });
+        let db_conn = DatabaseConnection::new(":memory:").await?;
+        let state = AppState { config, db_conn };
 
-        Ok(TestClient::new(router))
+        Ok(TestClient::new(router.with_state(state)))
     }
 }
 
 mod tests {
     #[tokio::test]
     async fn smoke_test() {
-        let client = crate::core_test_setup::construct_test_client()
+        let router =
+            axum::Router::new().route("/", axum::routing::get(|| async { "Hello, World!" }));
+
+        let client = crate::core_test_setup::construct_test_client(router)
             .await
             .unwrap();
 

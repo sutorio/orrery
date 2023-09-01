@@ -5,12 +5,9 @@ async fn main() -> anyhow::Result<()> {
     // Initialise the tracing subscriber.
     orrery::init_tracing();
     // Set up the database connection pool.
-    let db_pool = orrery::construct_db_pool(&config.database_url).await?;
-    // Run any outstanding migrations.
-    // TODO: move this to a build.rs file
-    orrery::run_db_migrations(&db_pool).await?;
-
-    orrery::serve(config, db_pool).await?;
+    let db_conn = orrery::DatabaseConnection::new(&config.database_url).await?;
+    // Start the server.
+    orrery::serve(config, db_conn).await?;
 
     Ok(())
 }
