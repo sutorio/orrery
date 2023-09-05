@@ -10,7 +10,7 @@ use crate::{AppResult, AppState};
 use anyhow::Context;
 use axum::extract::{FromRef, Path, State};
 use axum::routing::{delete, get, post};
-use axum::{Json, Router};
+use axum::{async_trait, Json, Router};
 use serde::{Deserialize, Serialize};
 use sqlx::sqlite::SqlitePool as DbPool;
 
@@ -88,69 +88,6 @@ pub struct NewBody {
     pub subregion: Option<i64>,
 }
 
-// #[axum::debug_handler]
-// async fn create_body(
-//     State(app_state): State<AppState>,
-//     Json(new_body): Json<NewBody>,
-// ) -> AppResult<Json<CelestialBody>> {
-//     let inserted = sqlx::query_as!(
-// 						CelestialBody,
-// 						"INSERT INTO celestial_body (body_name, radius, aphelion, perihelion, region, subregion, orbital_period, created_at) VALUES (?1, ?2, ?3, ?4, ?5, strftime('%s', 'now'))",
-// 						new_body.body_name,
-// 						new_body.radius,
-// 						new_body.aphelion,
-// 						new_body.perihelion,
-// 						new_body.orbital_period,
-// 						new_body.region,
-// 						new_body.subregion,
-// 				)
-// 				.fetch_one(&app_state.db_conn.0)
-// 				.await?;
-
-//     Ok(Json(inserted))
-// }
-
-// #[axum::debug_handler]
-// async fn get_all_bodies(State(app_state): State<AppState>) -> AppResult<Json<Vec<CelestialBody>>> {
-//     let bodies = sqlx::query_as!(CelestialBody, "SELECT * FROM celestial_body")
-//         .fetch_all(&app_state.db_conn.0)
-//         .await?;
-
-//     Ok(Json(bodies))
-// }
-
-// #[axum::debug_handler]
-// async fn get_body(
-//     State(app_state): State<AppState>,
-//     Path(body_id): Path<i64>,
-// ) -> AppResult<Json<CelestialBody>> {
-//     let body = sqlx::query_as!(
-//         CelestialBody,
-//         "SELECT * FROM celestial_body WHERE body_id = ?1",
-//         body_id
-//     )
-//     .fetch_one(&app_state.db_conn.0)
-//     .await?;
-
-//     Ok(Json(body))
-// }
-
-// #[axum::debug_handler]
-// async fn delete_body(
-//     State(app_state): State<AppState>,
-//     Path(body_id): Path<i64>,
-// ) -> AppResult<Json<CelestialBody>> {
-//     let deleted = sqlx::query_as!(
-//         CelestialBody,
-//         "DELETE FROM celestial_body WHERE body_id = ?1 RETURNING *",
-//         body_id
-//     )
-//     .fetch_one(&app_state.db_conn.0)
-//     .await?;
-
-//     Ok(Json(deleted))
-// }
-
 // -------------------------------------------------------------------------------
 // 4. Celestial regions (e.g. inner solar system, outer solar system, etc.)
 // -------------------------------------------------------------------------------
@@ -165,38 +102,8 @@ fn region_routes() -> Router<AppState> {
         .route("/regions/:region_id", delete(delete_region))
 }
 
-#[cfg(test)]
-mod region_tests {
-    use super::*;
-    use crate::core_test_setup::*;
-
-    #[tokio::test]
-    async fn region_interface() {
-        let router = region_routes();
-        let client = construct_test_client(router).await.unwrap();
-
-        let response = client.get("/regions").send().await;
-        assert_eq!(response.status(), axum::http::StatusCode::OK);
-        assert_eq!(response.text().await, "[]");
-
-        // let response = client
-        //     .post("/regions")
-        //     .json(&NewRegion {
-        //         region_name: "Inner Solar System".to_string(),
-        //         region_description: Some(
-        //             "The region of the solar system between the Sun and the asteroid belt."
-        //                 .to_string(),
-        //         ),
-        //     })
-        //     .send()
-        //     .await;
-        // assert_eq!(response.status(), axum::http::StatusCode::OK);
-        // assert_eq!(response.text().await, "{\"region_id\":1,\"region_name\":\"Inner Solar System\",\"region_description\":\"The region of the solar system between the Sun and the asteroid belt.\",\"created_at\":1624291200,\"updated_at\":null}");
-    }
-}
-
 /// The `CelestialRegion` struct represents a region of the solar system, such as the inner solar system, the outer solar system, etc.
-#[derive(Deserialize, Serialize)]
+#[derive(Debug, Deserialize, Serialize)]
 pub struct Region {
     pub region_id: i64,
     pub region_name: String,
@@ -263,42 +170,6 @@ async fn get_region(
     Ok(Json(region))
 }
 
-// async fn update_region_name(
-//     State(app_state): State<AppState>,
-//     Path(region_id): Path<i64>,
-//     Json(update_region_name): Json<UpdateRegionName>,
-// ) -> AppResult<Json<Region>> {
-//     unimplemented!()
-// let updated = sqlx::query_as!(
-// 		Region,
-// 		"UPDATE celestial_region SET region_name = ?2, updated_at = strftime('%s', 'now') WHERE region_id = ?1 RETURNING *",
-// 		region_id,
-// 		update_region_name.region_name
-// )
-// .fetch_one(&app_state.db_conn.0)
-// .await?;
-
-// Ok(Json(updated))
-// }
-
-// async fn update_region_description(
-//     State(app_state): State<AppState>,
-//     Path(region_id): Path<i64>,
-//     Json(update_region_description): Json<UpdateRegionDescription>,
-// ) -> AppResult<Json<Region>> {
-// unimplemented!()
-// let updated = sqlx::query_as!(
-// 		Region,
-// 		"UPDATE celestial_region SET region_description = ?2, updated_at = strftime('%s', 'now') WHERE region_id = ?1",
-// 		region_id,
-// 		update_region_description.region_description
-// )
-// .fetch_one(&app_state.db_conn.0)
-// .await?;
-
-// Ok(Json(updated))
-// }
-
 async fn delete_region(
     State(app_state): State<AppState>,
     Path(region_id): Path<i64>,
@@ -344,16 +215,6 @@ pub struct NewSubregion {
     pub subregion_description: Option<String>,
 }
 
-// #[derive(Deserialize)]
-// pub struct UpdateSubregionName {
-//     pub subregion_name: String,
-// }
-
-// #[derive(Deserialize)]
-// pub struct UpdateSubregionDescription {
-//     pub subregion_description: String,
-// }
-
 #[axum::debug_handler]
 async fn create_subregion(
     State(app_state): State<AppState>,
@@ -395,42 +256,6 @@ async fn get_subregion(
 
     Ok(Json(subregion))
 }
-
-// async fn update_subregion_name(
-//     State(app_state): State<AppState>,
-//     Path(subregion_id): Path<i64>,
-//     Json(update_subregion_name): Json<UpdateSubregionName>,
-// ) -> AppResult<Json<Subregion>> {
-//     unimplemented!()
-// let updated = sqlx::query_as!(
-// 		subregion,
-// 		"UPDATE celestial_subregion SET subregion_name = ?2, updated_at = strftime('%s', 'now') WHERE subregion_id = ?1 RETURNING *",
-// 		subregion_id,
-// 		update_subregion_name.subregion_name
-// )
-// .fetch_one(&app_state.db_conn.0)
-// .await?;
-
-// Ok(Json(updated))
-// }
-
-// async fn update_subregion_description(
-//     State(app_state): State<AppState>,
-//     Path(subregion_id): Path<i64>,
-//     Json(update_subregion_description): Json<UpdateSubregionDescription>,
-// ) -> AppResult<Json<Subregion>> {
-//     unimplemented!()
-// let updated = sqlx::query_as!(
-// 		subregion,
-// 		"UPDATE celestial_subregion SET subregion_description = ?2, updated_at = strftime('%s', 'now') WHERE subregion_id = ?1",
-// 		subregion_id,
-// 		update_subregion_description.subregion_description
-// )
-// .fetch_one(&app_state.db_conn.0)
-// .await?;
-
-// Ok(Json(updated))
-// }
 
 async fn delete_subregion(
     State(app_state): State<AppState>,

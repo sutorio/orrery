@@ -8,3 +8,6 @@ dev_prerequisites:
 
 dev:
 	cargo watch -c -q -- cargo run 
+
+dev_test:
+	cargo watch -c -q -- cargo test
