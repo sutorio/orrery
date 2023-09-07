@@ -1,101 +1,67 @@
 # Orrery <small>(Rust)</small>
 
-## TODO (keep adding to this)
-
-- [ ] API Routes + handlers
-  - [ ] Database pool creation/access
-  - [ ] Correct HTTP response for db constraint errors
-  - [ ] Correct HTTP response for borked/otherwise db
-  - [ ] Merged API routes
-  - [ ] Celestial bodies
-    - [x] table creation
-    - [ ] de/serialisable structs
-    - [ ] RESTful routes
-    - [ ] handlers with inlined db queries
-  - [x] Celestial regions
-    - [x] table creation
-    - [x] de/serialisable structs
-    - [x] RESTful routes
-    - [x] handlers with inlined db queries
-      - [ ] allow put/patch update handlers to return updated data
-  - [ ] Celestial subregions
-    - [x] table creation
-    - [ ] de/serialisable structs
-    - [ ] RESTful routes
-    - [ ] handlers with inlined db queries
-
 ## Overview
 
 My daughter Joanie's interest in planets led to the creation of a concise,
 visually appealing solar system information app.
 
-### Data
-
-Solar system objects of diverse types orbit the sun, some orbit other objects
-(requiring parent/child links). Most objects I focus on are region-associated,
-with subregions. Clouds/fields contain abundant small objects, e.g., the
-Asteroid Belt, the Kuiper Belt, and planetary ring systems. Some objects, like
-comets, lack region ties. The sun is a distinct case, a visual axle for the
-orrery's spin.
-
-While scientific accuracy is essential for the data, visual limitations must
-also be considered. Directly depicting the solar system at true scale is
-unfeasible due to immense distances. Even a log scale becomes visually cluttered
-with numerous objects. To address this, a formula like sqrt(AU•n)•x can be
-employed, with adjustable values of n and x for aesthetic appeal. However,
-planet radii present a challenge, as uniform scaling leads to disproportionate
-positioning, especially for larger planets in close proximity.
-
-Initially, I tried to hand-write this structure with the aim of creating a seed
-file. This proved infeasible, and an immediate data model concern emerged:
-integrating an input interface.
-
-This mandates a separate admin part with authentication/authorization for the
-app, serving as a testbed for strategies.
-
-Expect data model inaccuracies; this is a proof of concept.
-
-## Goals
-
-- Produce a simple application using Axum/SQLX in preparation for the two more
-  complex applications to come (_cf_ Docket & Dead Plastic).
-- Assess how feasible is it to produce an appliction in Rust that compiles to a
-  single binary, with the database & frontend embeddded in said binary.
-- Map out development & deployment pipeline for said single-binary application.
-- Properly investigate set up and usage of observability - tracing etc.
-- Investigate testing strategies for Rust web apps.
-- Compare model of Rust web application Vs. Elixir web application.
-- Get thinking straight regarding assesmtn of power efficiency/usage Vs.
-  Elixir/JS Frameworks/etc (backend & frontend).
-
 ## Development
+
+This is based heavily on Jeremy Chone's `awesome-app`<sup> [1][1]</sup> work.
+His initial video, _Rust Axum_<sup> [2][2]</sup> is one of the best
+introductions to building an application using Axum that I've watched/read, and
+he expanded on it in _Rust Axum Production Coding_<sup> [3][3]</sup>. I like the
+structure he uses, it makes sense.
+
+[1]: https://github.com/awesomeapp-dev
+[2]: https://youtu.be/XZtlD_m59sM?si=NotUnKtun75eZNDt
+[3]: https://youtu.be/3cA_mk4vdWY?si=c9dmgrHT0AHvo2bp
+
+### Constraints
+
+1. The application should be packaged as a single binary, trivially deployable.
+2. The application binary should be as small as possible.
+3. The application is expected to require persistence, and that should come in
+   the form of an embedded database.
+4. Ideally, the persistance should be in the form of a relational Db (so
+   SQLite).
+5. The application is not expected to have _many_ users. However
+6. The application is expected to provide interactive _administrative_ functions
+   personal to users. So:
+7. The application should have users, secure authentication, and authorisation.
+8. The application is expected to be a web application. However:
+9. The application code should be modularised in such a way that the HTTP layer
+   can be replaced with something else (_eg_ a desktop app framework, or a CLI).
+   This implies:
+10. The core application code should, as far as is feasible, avoid intermixing
+    concerns (for example, using Tower idioms relating to Result types outside
+    of actual Axum handler code).
+11. The application modularisation should, as far as is sensible, ensure unit
+    testing is as easy to carry out as possible.
+12. The application should implement automated CI for building, testing and
+    deploying at a production standard.
+13. The application should act as a testbed for building out reusable CI jobs.
+14. The application should implement logging/tracing.
 
 ### Prerequisites
 
-- `asdf` installed and on your $PATH
-- `rustup` installed and on your $PATH
+- Rust, ideally installed directly via [rustup](ADD_LINK)
+- The taskrunner/Make alternative [Just](https://just.systems). This has several
+  nice features, has been refined over a few years to a tight set of features,
+  and is simple. So the tradeoff for using it rather than Make seems reasonable.
 
-[asdf](https://asdf-vm.com/) is a universal version manager, and is used within
-the project to manage non-Rust language-level dependencies (SQLite &c.).
-Dependencies are specified in the [.tool-versions](./.tool-versions) file at the
-root of the project.
+### Setup
 
-> _Why is Deno listed in the .tool-versions file?_ Deno is used purely for
-> development, and may be removed after review. The built-in formatter works for
-> JS/TS/HTML/Markdown/CSS files, and works well; this is the primary usecase. It
-> also includes a tool called `deno_emit` which will run a basic compile on
-> TS/JS code to allow it to be deployed to a browser environment.
-
-Although asdf uses [rustup](https://rustup.rs/) under the hood to manage Rust
-versions, it is more relaiable to use rustup directly. The
-[rust-toolchain](./rust-toolchain.toml) file at the root of the project
-specifies the channel used + the components required on install.
-
-### Installation/setup
-
-To install language dependencies, CLI tools, Cargo tools, and to create the
-database if not already created, run:
+To install the Cargo tools & instantiate the database, run
 
 ```sh
-make dev_prerequisites
+just setup_dev
+```
+
+### Running the application
+
+Then run the application in watch mode:
+
+```sh
+just watch_dev
 ```
