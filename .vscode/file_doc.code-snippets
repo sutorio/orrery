@@ -1,0 +1,13 @@
+{
+  // a snippet called "file section" that creates a section in a rust file: 3 lines, first line 80 characters consisting of double slash comment, space, then hyphens, second line double slash comment then space then placeholder SECTION TITLE, third line same as first line
+  "file section": {
+    "scope": "rust",
+    "prefix": "sect",
+    "body": [
+      "// -----------------------------------------------------------------------------",
+      "// ${1:SECTION TITLE}",
+      "// -----------------------------------------------------------------------------"
+    ],
+    "description": "Creates a section in a rust file"
+  }
+}

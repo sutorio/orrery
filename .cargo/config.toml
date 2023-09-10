@@ -1,0 +1,26 @@
+# Cargo config file. 
+# See: https://doc.rust-lang.org/cargo/reference/config.html
+
+# Environments variables set for all `cargo ...` commands.
+# IMPORTANT: this sets variables for cargo commands ONLY.
+# IMPORTANT: environment variables at deployment time must be available in the
+#            environment of the process running the server.
+# IMPORTANT: keys and secrets set here are FOR DEVELOPMENT ONLY.
+[env]
+# The SQLite database URl
+DATABASE_URL = "sqlite:orrery.db"
+
+# The log level for the application. In this case, `tracing` is being used to produce structured logs.
+# FIXME: this is not granular in any way: check the docs and amend the string accordingly based on need:
+# https://docs.rs/tracing-subscriber/0.3.15/tracing_subscriber/fmt/index.html#filtering-events-with-environment-variables
+RUST_LOG = "trace"
+
+# O  R  R  E R Y
+# 14 17 1_ _ _ _
+SERVER_PORT = "14171"
+
+ASSETS_FOLDER = "assets/"
+
+PASSWORD_KEY = "CKUGFOD9_2Qf6Pn3ZFRYgPYb8ht4vKqEG9PGMXTB7497bT0367DjoaD6ydFnEVaIRda0kKeBZVCT5Hb62m2sCA"
+TOKEN_KEY = "9FoHBmkyxbgu_xFoQK7e0jz3RMNVJWgfvbVn712FBNH9LLaAWS3CS6Zpcg6RveiObvCUb6a2z-uAiLjhLh2igw"
+TOKEN_DURATION_IN_SEC = "1800"                                                                          # 30 minutes

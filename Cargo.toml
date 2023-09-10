@@ -33,7 +33,6 @@ tracing-subscriber = { version = "0.3.17", features = ["env-filter"] } # [2]
 # Error handling
 # 1. anyhow: simple error handling
 # 2. thiserror: derive macro for granular wrapping/mapping of specific errors
-anyhow = "1.0.75"    # [1]
 thiserror = "1.0.47" # [2]
 
 # Templating
@@ -47,10 +46,8 @@ askama = { version = "0.12.0", default-features = false, features = [
 askama_axum = "0.3.0" # [2]
 
 # Configuration
-# 1. clap: command line argument parsing
-# 2. dotenvy: environment variable parsing
-clap = { version = "4.3.23", features = ["derive", "env"] }
-dotenvy = "0.15.7"
+# 1. envconfig: initialise a config struct from environment variables, saves boilerplate.
+envconfig = "0.10.0" # [1]
 
 # Serialization
 # 1. serde: de facto standard serialization framework
@@ -59,4 +56,8 @@ serde = { version = "1.0.185", features = ["derive"] } # [1]
 serde_json = "1.0.105"                                 # [2]
 
 [dev-dependencies]
-axum-test-helper = "0.3.0"
+# Dev/testing
+# 1. anyhow: simple error handling
+# 2. axum-test-helper: 
+anyhow = "1.0.75"          # [1]
+axum-test-helper = "0.3.0" # [2]
