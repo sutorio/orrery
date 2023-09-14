@@ -54,6 +54,8 @@ envconfig = "0.10.0" # [1]
 # 2. serde_json: serde implementation for JSON
 serde = { version = "1.0.185", features = ["derive"] } # [1]
 serde_json = "1.0.105"                                 # [2]
+serde_with = "3.3.0"
+sqlb = "0.3.8"
 
 [dev-dependencies]
 # Dev/testing
@@ -61,3 +63,4 @@ serde_json = "1.0.105"                                 # [2]
 # 2. axum-test-helper: 
 anyhow = "1.0.75"          # [1]
 axum-test-helper = "0.3.0" # [2]
+serial_test = "2.0.0"

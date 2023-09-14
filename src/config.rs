@@ -29,8 +29,14 @@ pub fn config() -> &'static Config {
 #[allow(non_snake_case)]
 #[derive(Debug, Envconfig)]
 pub struct Config {
-    /// The URL of the database to connect to. Sqlx requires this, both for connection & for the CLI to work.
+    /// The URL of the database to connect to.
     pub DATABASE_URL: String,
+    /// Adjust pool connections based on usage.
+    #[envconfig(default = "5")]
+    pub DATABASE_POOL_MAX_CONNECTIONS: u32,
+    /// Db setup should fail if the timeout is exceeded.
+    #[envconfig(default = "500")]
+    pub DATABASE_POOL_CONNECTION_TIMEOUT_MS: u64,
     /// The log level to use for the application.
     pub RUST_LOG: String,
     /// The port to listen on for HTTP requests.
@@ -58,7 +64,7 @@ mod tests {
     }
 
     #[test]
-    fn using_config_map_in_tests() {
+    fn test_using_config_map() {
         let required_configs = vec![
             ("DATABASE_URL", ":memory:"),
             ("RUST_LOG", "debug"),
