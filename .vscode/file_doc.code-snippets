@@ -58,6 +58,7 @@
     "scope": "rust",
     "prefix": "stestfn",
     "body": [
+      "#[serial]",
       "#[tokio::test]",
       "async fn test_${1:test_name}() -> Result<()> {",
       "    Ok(())",

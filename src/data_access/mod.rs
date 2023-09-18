@@ -13,7 +13,7 @@ mod model;
 mod store;
 
 pub use self::error::{Error, Result};
-use store::db::{create_database_pool, DbPool};
+use store::db::{create_database_pool, DbCrudAction, DbCrudServer, DbPool};
 
 // -----------------------------------------------------------------------------
 //

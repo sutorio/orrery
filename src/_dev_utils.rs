@@ -80,6 +80,7 @@ pub async fn initialise_development_environment() {
     .await;
 }
 
+#[cfg(test)]
 pub async fn initialise_test_environment() -> DataAccessManager {
     // NOTE: Exact same setup pattern as the development environment setup, using the OnceCell,
     //       but this time the `DataAccessManager` is returned.

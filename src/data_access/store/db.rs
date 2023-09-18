@@ -1,7 +1,8 @@
-use crate::config::config;
-use crate::data_access::{Error, Result};
-use sqlx::sqlite::SqlitePoolOptions;
-use sqlx::{Pool, Sqlite};
+use crate::config;
+use crate::data_access::{DataAccessManager, Error, Result};
+use crate::RequestContext;
+use sqlx::sqlite::{SqlitePoolOptions, SqliteRow};
+use sqlx::{FromRow, Pool, Sqlite};
 use std::time::Duration;
 
 // -----------------------------------------------------------------------------
@@ -33,3 +34,96 @@ pub async fn create_database_pool() -> Result<DbPool> {
 //       Without this ability, the controllers will need to be defined for each entity, thus
 //       defeating the purpose of the generic controllers.
 // -----------------------------------------------------------------------------
+
+pub trait DbCrudServer {
+    const TABLE: &'static str;
+}
+
+pub struct DbCrudAction;
+
+impl DbCrudAction {
+    pub async fn create<DBCS, E>(
+        _ctx: &RequestContext,
+        _dam: &DataAccessManager,
+        _data: E,
+    ) -> Result<i64>
+    where
+        DBCS: DbCrudServer,
+        E: for<'r> FromRow<'r, SqliteRow> + Unpin + Send,
+    {
+        unimplemented!()
+    }
+
+    pub async fn read<DBCS, E>(_ctx: &RequestContext, dam: &DataAccessManager, id: i64) -> Result<E>
+    where
+        DBCS: DbCrudServer,
+        E: for<'r> FromRow<'r, SqliteRow> + Unpin + Send,
+    {
+        let db = dam.db_pool();
+        let sql = format!("SELECT * FROM {} WHERE id = $1", DBCS::TABLE);
+
+        let entity: E = sqlx::query_as(&sql)
+            .bind(id)
+            .fetch_optional(db)
+            .await?
+            .ok_or(Error::EntityNotFound {
+                entity: DBCS::TABLE,
+                id,
+            })?;
+
+        Ok(entity)
+    }
+
+    pub async fn read_all<DBCS, E>(_ctx: &RequestContext, dam: &DataAccessManager) -> Result<Vec<E>>
+    where
+        DBCS: DbCrudServer,
+        E: for<'r> FromRow<'r, SqliteRow> + Unpin + Send,
+    {
+        let db = dam.db_pool();
+        let sql = format!("SELECT * FROM {}", DBCS::TABLE);
+
+        let entities: Vec<E> = sqlx::query_as(&sql).fetch_all(db).await?;
+
+        Ok(entities)
+    }
+
+    pub async fn update<DBCS, E>(
+        _ctx: &RequestContext,
+        _dam: &DataAccessManager,
+        _data: E,
+    ) -> Result<i64>
+    where
+        DBCS: DbCrudServer,
+        E: for<'r> FromRow<'r, SqliteRow> + Unpin + Send,
+    {
+        unimplemented!()
+    }
+
+    pub async fn delete<DBCS, E>(
+        _ctx: &RequestContext,
+        dam: &DataAccessManager,
+        id: i64,
+    ) -> Result<()>
+    where
+        DBCS: DbCrudServer,
+        E: for<'r> FromRow<'r, SqliteRow> + Unpin + Send,
+    {
+        let db = dam.db_pool();
+        let sql = format!("DELETE FROM {} WHERE id = $1", DBCS::TABLE);
+
+        let delete_count: u64 = sqlx::query(&sql)
+            .bind(id)
+            .execute(db)
+            .await?
+            .rows_affected();
+
+        if delete_count == 0 {
+            Err(Error::EntityNotFound {
+                entity: DBCS::TABLE,
+                id,
+            })
+        } else {
+            Ok(())
+        }
+    }
+}

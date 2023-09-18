@@ -52,15 +52,16 @@ envconfig = "0.10.0" # [1]
 # Serialization
 # 1. serde: de facto standard serialization framework
 # 2. serde_json: serde implementation for JSON
+# 3. serde_with: serde helper for custom deserialization
 serde = { version = "1.0.185", features = ["derive"] } # [1]
 serde_json = "1.0.105"                                 # [2]
-serde_with = "3.3.0"
-sqlb = "0.3.8"
+serde_with = "3.3.0"                                   # [3]
 
 [dev-dependencies]
 # Dev/testing
 # 1. anyhow: simple error handling
-# 2. axum-test-helper: 
+# 2. axum-test-helper: exposes Axum's internal test helper.
+# 3. serial_test: run tests serially, to avoid database contention 
 anyhow = "1.0.75"          # [1]
 axum-test-helper = "0.3.0" # [2]
-serial_test = "2.0.0"
+serial_test = "2.0.0"      # [3]

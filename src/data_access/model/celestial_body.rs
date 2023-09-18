@@ -1,4 +1,4 @@
-use crate::data_access::{DataAccessManager, Result};
+use crate::data_access::{DataAccessManager, DbCrudAction, DbCrudServer, Error, Result};
 use crate::RequestContext;
 use serde::{Deserialize, Serialize};
 use sqlx::FromRow;
@@ -6,6 +6,8 @@ use sqlx::FromRow;
 // -----------------------------------------------------------------------------
 // Types
 // -----------------------------------------------------------------------------
+
+const TABLE_NAME: &'static str = "celestial_body";
 
 /// Returned from the data access layer, hence `Serialize`.
 /// This is the "entity" that is used by the application. It maps to database table/s,
@@ -39,6 +41,10 @@ pub struct CelestialBodyUpdate {
 
 struct Server;
 
+impl DbCrudServer for Server {
+    const TABLE: &'static str = "celestial_body";
+}
+
 impl Server {
     async fn create(
         _ctx: &RequestContext,
@@ -62,68 +68,32 @@ impl Server {
 
     async fn read(
         _ctx: &RequestContext,
-        dac: &DataAccessManager,
+        dam: &DataAccessManager,
         id: i64,
     ) -> Result<CelestialBody> {
-        let db = dac.db_pool();
-        let result = sqlx::query_as!(
-            CelestialBody,
-            r#"
-                SELECT *
-                FROM celestial_body
-                WHERE body_id = $1
-            "#,
-            id
-        )
-        .fetch_one(db)
-        .await?;
-
-        Ok(result)
+        DbCrudAction::read::<Self, _>(_ctx, dam, id).await
     }
 
     async fn read_all(
         _ctx: &RequestContext,
-        dac: &DataAccessManager,
+        dam: &DataAccessManager,
     ) -> Result<Vec<CelestialBody>> {
-        let db = dac.db_pool();
-        let result = sqlx::query_as!(
-            CelestialBody,
-            r#"
-                SELECT *
-                FROM celestial_body
-            "#,
-        )
-        .fetch_all(db)
-        .await?;
-
-        Ok(result)
+        DbCrudAction::read_all::<Self, _>(_ctx, dam).await
     }
 
-    async fn update() -> Result<i64> {
-        todo!()
+    async fn update(
+        _ctx: &RequestContext,
+        dam: &DataAccessManager,
+        _id: i64,
+        _data: CelestialBodyUpdate,
+    ) -> Result<i64> {
+        unimplemented!()
     }
 
-    async fn delete(_ctx: &RequestContext, dac: &DataAccessManager, id: i64) -> Result<()> {
-        let db = dac.db_pool();
-        let _result = sqlx::query!(
-            r#"
-                DELETE FROM celestial_body
-                WHERE body_id = $1
-            "#,
-            id
-        )
-        .execute(db)
-        .await?;
-
-        Ok(())
+    async fn delete(_ctx: &RequestContext, dam: &DataAccessManager, id: i64) -> Result<()> {
+        DbCrudAction::delete::<Self, CelestialBody>(_ctx, dam, id).await
     }
 }
-
-// -----------------------------------------------------------------------------
-// Client
-// -----------------------------------------------------------------------------
-
-pub struct Client;
 
 // -----------------------------------------------------------------------------
 // Tests
@@ -146,7 +116,7 @@ mod tests {
         // Fixtures
         let fixture_name = "test_create_ok";
 
-        // Execution
+        // Execution¬
         let data = CelestialBodyCreate {
             body_name: fixture_name.to_string(),
         };
@@ -174,6 +144,48 @@ mod tests {
             .rows_affected();
 
         assert_eq!(delete_count, 1, "Expected 1 row to be deleted");
+
+        Ok(())
+    }
+
+    #[serial]
+    #[tokio::test]
+    async fn test_get_not_found() -> Result<()> {
+        // Setup
+        let dam = initialise_test_environment().await;
+        let ctx = RequestContext::root_context();
+
+        // Execution¬
+        let result = Server::read(&ctx, &dam, 0).await;
+
+        assert!(matches!(
+            result,
+            Err(Error::EntityNotFound {
+                entity: TABLE_NAME,
+                id: 0
+            })
+        ));
+
+        Ok(())
+    }
+
+    #[serial]
+    #[tokio::test]
+    async fn test_delete_not_found() -> Result<()> {
+        // Setup
+        let dam = initialise_test_environment().await;
+        let ctx = RequestContext::root_context();
+
+        // Execution¬
+        let result = Server::delete(&ctx, &dam, 0).await;
+
+        assert!(matches!(
+            result,
+            Err(Error::EntityNotFound {
+                entity: TABLE_NAME,
+                id: 0
+            })
+        ));
 
         Ok(())
     }
