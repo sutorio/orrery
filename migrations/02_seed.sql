@@ -1,1 +1,1 @@
-INSERT INTO user (user_name) VALUES ('ROOT');
+-- INSERT INTO user (name) VALUES ('ROOT');

@@ -6,7 +6,6 @@ use sqlx::FromRow;
 // -----------------------------------------------------------------------------
 // Types
 // -----------------------------------------------------------------------------
-
 const TABLE_NAME: &'static str = "celestial_body";
 
 /// Returned from the data access layer, hence `Serialize`.
@@ -14,20 +13,20 @@ const TABLE_NAME: &'static str = "celestial_body";
 /// so sqlx's `FromRow` is implemented.
 #[derive(Clone, Debug, FromRow, Serialize)]
 pub struct CelestialBody {
-    pub body_id: i64,
-    pub body_name: String,
+    pub id: i64,
+    pub name: String,
 }
 
 /// Sent to the data access layer, hence `Deserialize`.
 #[derive(Deserialize)]
 pub struct CelestialBodyCreate {
-    pub body_name: String,
+    pub name: String,
 }
 
 /// Sent to the data access layer, hence `Deserialize`.
 #[derive(Deserialize)]
 pub struct CelestialBodyUpdate {
-    pub body_name: Option<String>,
+    pub name: Option<String>,
 }
 
 // -----------------------------------------------------------------------------
@@ -54,10 +53,10 @@ impl Server {
         let db = dac.db_pool();
         let result = sqlx::query!(
             r#"
-                INSERT INTO celestial_body (body_name)
+                INSERT INTO celestial_body (name)
                 VALUES ($1)
             "#,
-            data.body_name
+            data.name
         )
         .execute(db)
         .await?
@@ -83,7 +82,7 @@ impl Server {
 
     async fn update(
         _ctx: &RequestContext,
-        dam: &DataAccessManager,
+        _dam: &DataAccessManager,
         _id: i64,
         _data: CelestialBodyUpdate,
     ) -> Result<i64> {
@@ -118,26 +117,26 @@ mod tests {
 
         // Execution¬
         let data = CelestialBodyCreate {
-            body_name: fixture_name.to_string(),
+            name: fixture_name.to_string(),
         };
         let result_id = Server::create(&ctx, &dam, data).await?;
 
         // Verification
-        let (body_name,): (String,) = sqlx::query_as(
+        let (name,): (String,) = sqlx::query_as(
             "
-                SELECT body_name
+                SELECT name
                 FROM celestial_body
-                WHERE body_id = $1
+                WHERE id = $1
             ",
         )
         .bind(result_id)
         .fetch_one(dam.db_pool())
         .await?;
 
-        assert_eq!(body_name, fixture_name);
+        assert_eq!(name, fixture_name);
 
         // Cleanup
-        let delete_count = sqlx::query("DELETE FROM celestial_body WHERE body_id = $1")
+        let delete_count = sqlx::query("DELETE FROM celestial_body WHERE id = $1")
             .bind(result_id)
             .execute(dam.db_pool())
             .await?
