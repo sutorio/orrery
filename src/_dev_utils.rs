@@ -8,8 +8,6 @@ use std::path::PathBuf;
 use std::time::Duration;
 use tokio::sync::OnceCell;
 
-use crate::data_access::DataAccessManager;
-
 type Db = Pool<Sqlite>;
 
 // Hardcoded config values to ensure no overlap with the real config.
@@ -81,16 +79,16 @@ pub async fn initialise_development_environment() {
 }
 
 #[cfg(test)]
-pub async fn initialise_test_environment() -> DataAccessManager {
+pub async fn initialise_test_environment() -> crate::data_access::DataAccessManager {
     // NOTE: Exact same setup pattern as the development environment setup, using the OnceCell,
     //       but this time the `DataAccessManager` is returned.
-    static INIT: OnceCell<DataAccessManager> = OnceCell::const_new();
+    static INIT: OnceCell<crate::data_access::DataAccessManager> = OnceCell::const_new();
 
     let dam = INIT
         .get_or_init(|| async {
             let db_pool = initialise_development_database().await.unwrap();
             // NOTE: unwrap again here, fail fast and fail early for tests.
-            DataAccessManager::new_from_existing_resources(db_pool)
+            crate::data_access::DataAccessManager::new_from_existing_resources(db_pool)
                 .await
                 .unwrap()
         })

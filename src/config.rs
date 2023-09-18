@@ -12,7 +12,7 @@ use std::sync::OnceLock;
 /// The config need only be loaded once, hence definition as a `static`.
 /// Wrapped in a function to scope the visibility; technically makes little
 /// difference, as `static`s will always be global.
-pub fn config() -> &'static Config {
+pub fn get_config() -> &'static Config {
     static INSTANCE: OnceLock<Config> = OnceLock::new();
 
     INSTANCE.get_or_init(|| {

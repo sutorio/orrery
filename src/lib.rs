@@ -1,14 +1,14 @@
 mod _dev_utils;
-mod config;
+pub mod config;
 pub mod data_access;
 mod request_context;
+pub mod security;
 
 // -----------------------------------------------------------------------------
 // Re-exports
 // -----------------------------------------------------------------------------
 
 pub use _dev_utils::initialise_development_environment;
-pub use config::{config, Config};
 pub use request_context::RequestContext;
 
 // -----------------------------------------------------------------------------

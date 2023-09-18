@@ -1,4 +1,4 @@
-use crate::config;
+use crate::config::get_config;
 use crate::data_access::{DataAccessManager, Error, Result};
 use crate::RequestContext;
 use sqlx::sqlite::{SqlitePoolOptions, SqliteRow};
@@ -13,11 +13,11 @@ pub type DbPool = Pool<Sqlite>;
 
 pub async fn create_database_pool() -> Result<DbPool> {
     let connection_pool = SqlitePoolOptions::new()
-        .max_connections(config().DATABASE_POOL_MAX_CONNECTIONS)
+        .max_connections(get_config().DATABASE_POOL_MAX_CONNECTIONS)
         .acquire_timeout(Duration::from_millis(
-            config().DATABASE_POOL_CONNECTION_TIMEOUT_MS,
+            get_config().DATABASE_POOL_CONNECTION_TIMEOUT_MS,
         ))
-        .connect(&config().DATABASE_URL)
+        .connect(&get_config().DATABASE_URL)
         .await
         .map_err(|err| Error::FailedToCreatePool(err.to_string()));
 

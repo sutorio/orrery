@@ -30,11 +30,6 @@ sqlx = { version = "0.7.1", default-features = false, features = [
 tracing = "0.1.37"                                                     # [1]
 tracing-subscriber = { version = "0.3.17", features = ["env-filter"] } # [2]
 
-# Error handling
-# 1. anyhow: simple error handling
-# 2. thiserror: derive macro for granular wrapping/mapping of specific errors
-thiserror = "1.0.47" # [2]
-
 # Templating
 # 1. askama: compile-time templates, based on Jinja
 # 2. askama-axum: axum integration for askama. NOTE: this is required even though the axum feature is active in askama. 
@@ -56,6 +51,15 @@ envconfig = "0.10.0" # [1]
 serde = { version = "1.0.185", features = ["derive"] } # [1]
 serde_json = "1.0.105"                                 # [2]
 serde_with = "3.3.0"                                   # [3]
+
+# Security/cryptography
+# 1. hmac: HMAC-SHA256 implementation
+# 2. rand: de facto standard random number generation
+# 3. sha2: SHA256 implementation
+hmac = "0.12.1" # [1]
+rand = "0.8.5"  # [2]
+sha2 = "0.10.7" # [3]
+base64ct = { version = "1.6.0", features = ["alloc"] }
 
 [dev-dependencies]
 # Dev/testing
