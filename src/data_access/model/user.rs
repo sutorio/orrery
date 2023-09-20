@@ -1,5 +1,5 @@
 use crate::data_access::{DataAccessManager, DbCrudAction, DbCrudServer, Error, Result};
-use crate::RequestContext;
+use crate::{RequestContext, security};
 use serde::{Deserialize, Serialize};
 use sqlx::sqlite::SqliteRow;
 use sqlx::FromRow;
@@ -71,36 +71,49 @@ impl DbCrudServer for Server {
 }
 
 impl Server {
-    pub async fn get_by_id<E>(ctx: &RequestContext, dam: &DataAccessManager, id: i64) -> Result<E>
+    pub async fn fetch_by_id<E>(ctx: &RequestContext, dam: &DataAccessManager, id: i64) -> Result<E>
     where
         E: UserBy,
     {
         DbCrudAction::read::<Self, _>(ctx, dam, id).await
     }
 
-    // pub async fn fetch_first_by_username<E>(
-    //     ctx: &RequestContext,
-    //     dam: &DataAccessManager,
-    //     username: &str,
-    // ) -> Result<E>
-    // where
-    //     E: UserBy,
-    // {
-    //     let db = dam.db_pool();
-    //     let sql = format!("SELECT * FROM {} WHERE username = $1", TABLE_NAME);
-
-    //     let result = sqlx::query_as(&sql)
-    //         .bind(username)
-    //     .fetch_optional(db)
-    //     .await;
-
-    //     Ok(result)
-    // }
-
-    pub async fn read_all<E>(ctx: &RequestContext, dam: &DataAccessManager) -> Result<Vec<E>>
+    pub async fn fetch_by_username<E>(
+        ctx: &RequestContext,
+        dam: &DataAccessManager,
+        username: &str,
+    ) -> Result<E>
     where
         E: UserBy,
     {
-        DbCrudAction::read_all::<Self, _>(ctx, dam).await
+        let db = dam.db_pool();
+        let sql = format!("SELECT * FROM {} WHERE username = $1", TABLE_NAME);
+
+        let user = sqlx::query_as(&sql).bind(username).fetch_one(db).await?;
+
+        Ok(user)
+    }
+
+    pub async fn update_password<E>(
+        ctx: &RequestContext,
+        dam: &DataAccessManager,
+        id: i64,
+        password_clear: &str,
+    ) -> Result<()> {
+        let db = dam.db_pool();
+        let user: UserLogin = Self::fetch_by_id(ctx, dam, id).await?;
+        let password = security::encrypt_password(&security::EncryptedContent {
+            content: password_clear.to_string(),
+            salt: user.pwd_salt.to_string(),. 
+        })?;
+        let sql = format!("UPDATE {} SET pwd = $1 WHERE id = $2", TABLE_NAME);
+
+        sqlx::query(&sql)
+            .bind(&password.to_string())
+            .bind(id)
+            .execute(db)
+            .await?;
+
+        Ok(())
     }
 }

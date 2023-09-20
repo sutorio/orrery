@@ -16,6 +16,7 @@ axum = { version = "0.6.20", features = ["macros"] }    # [4]
 
 # Database
 # 1. sqlx: database driver. NOTE: the sqlx-cli tool should be installed.
+# 2. sqlx-crud: code generation for sqlx.
 sqlx = { version = "0.7.1", default-features = false, features = [
 	"runtime-tokio",
 	"tls-rustls",
@@ -23,6 +24,7 @@ sqlx = { version = "0.7.1", default-features = false, features = [
 	"macros",
 	"migrate",
 ] } # [1]
+sqlx-crud = "0.4.0" # [2]
 
 # Logging
 # 1. tracing: stuctured logging framework
@@ -56,10 +58,11 @@ serde_with = "3.3.0"                                   # [3]
 # 1. hmac: HMAC-SHA256 implementation
 # 2. rand: de facto standard random number generation
 # 3. sha2: SHA256 implementation
-hmac = "0.12.1" # [1]
-rand = "0.8.5"  # [2]
-sha2 = "0.10.7" # [3]
+hmac = "0.12.1"                                        # [1]
+rand = "0.8.5"                                         # [2]
+sha2 = "0.10.7"                                        # [3]
 base64ct = { version = "1.6.0", features = ["alloc"] }
+sea-query = { version = "0.30.1", default-features = false, features = ["derive", "attr", "thread-safe", "backend-sqlite"] }
 
 [dev-dependencies]
 # Dev/testing

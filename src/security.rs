@@ -44,8 +44,8 @@ impl std::error::Error for Error {}
 // -----------------------------------------------------------------------------
 
 pub struct EncryptedContent {
-    content: String, // Clear content.
-    salt: String,    // Clear salt.
+    pub content: String, // Clear content.
+    pub salt: String,    // Clear salt.
 }
 
 type HmacSha512 = Hmac<Sha512>;
