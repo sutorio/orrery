@@ -12,6 +12,18 @@ setup_dev:
 watch_dev:
 	cargo watch -q -c -w src/ -w .cargo/ -x "run"
 
-# Run the tests, automatically restarting on changes. Useful when developing the tests themselves.
-watch_dev_test:
+# Run all the tests.
+test_all:
+	cargo test -- --nocapture
+
+# Run a specific test.
+test TEST:
+	cargo test {{TEST}} -- --nocapture
+
+# Run all the tests, automatically restarting on changes. Useful when developing the tests themselves.
+watch_test_all:
 	cargo watch -q -c -x "test -- --nocapture"
+
+# Run a test, automatically restarting on changes. Useful when developing the tests themselves.
+watch_test TEST:
+	cargo watch -q -c -x "test {{TEST}} -- --nocapture"

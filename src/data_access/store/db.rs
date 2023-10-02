@@ -1,6 +1,7 @@
 use crate::config::get_config;
 use crate::data_access::{DataAccessManager, Error, Result};
 use crate::RequestContext;
+use sqlb::HasFields;
 use sqlx::sqlite::{SqlitePoolOptions, SqliteRow};
 use sqlx::{FromRow, Pool, Sqlite};
 use std::time::Duration;
@@ -26,13 +27,6 @@ pub async fn create_database_pool() -> Result<DbPool> {
 
 // -----------------------------------------------------------------------------
 // Generic CRUD controllers
-//
-// TODO: implement. The issue here is that SQLB, the library used to build the generic
-//       SQL queries, does not support SQLite. This is not an issue for reading or deleting,
-//       but for creating/updating, need a way to abstract over field names and values.
-//       SQLB provides a way to do this easily, in turn allowing for generic controller definition.
-//       Without this ability, the controllers will need to be defined for each entity, thus
-//       defeating the purpose of the generic controllers.
 // -----------------------------------------------------------------------------
 
 pub trait DbCrudServer {
@@ -44,27 +38,34 @@ pub struct DbCrudAction;
 impl DbCrudAction {
     pub async fn create<DBCS, E>(
         _ctx: &RequestContext,
-        _dam: &DataAccessManager,
-        _data: E,
+        dam: &DataAccessManager,
+        data: E,
     ) -> Result<i64>
     where
         DBCS: DbCrudServer,
-        E: for<'r> FromRow<'r, SqliteRow> + Unpin + Send,
+        E: HasFields,
     {
-        unimplemented!()
+        let (id,) = sqlb::insert()
+            .table(DBCS::TABLE)
+            .data(data.not_none_fields())
+            .returning(&["id"])
+            .fetch_one::<_, (i64,)>(dam.db_pool())
+            .await?;
+
+        Ok(id)
     }
 
     pub async fn read<DBCS, E>(_ctx: &RequestContext, dam: &DataAccessManager, id: i64) -> Result<E>
     where
         DBCS: DbCrudServer,
         E: for<'r> FromRow<'r, SqliteRow> + Unpin + Send,
+        E: HasFields,
     {
-        let db = dam.db_pool();
-        let sql = format!("SELECT * FROM {} WHERE id = $1", DBCS::TABLE);
-
-        let entity: E = sqlx::query_as(&sql)
-            .bind(id)
-            .fetch_optional(db)
+        let entity: E = sqlb::select()
+            .table(DBCS::TABLE)
+            .columns(E::field_names())
+            .and_where("id", "=", id)
+            .fetch_optional(dam.db_pool())
             .await?
             .ok_or(Error::EntityNotFound {
                 entity: DBCS::TABLE,
@@ -78,44 +79,54 @@ impl DbCrudAction {
     where
         DBCS: DbCrudServer,
         E: for<'r> FromRow<'r, SqliteRow> + Unpin + Send,
+        E: HasFields,
     {
-        let db = dam.db_pool();
-        let sql = format!("SELECT * FROM {}", DBCS::TABLE);
-
-        let entities: Vec<E> = sqlx::query_as(&sql).fetch_all(db).await?;
+        let entities: Vec<E> = sqlb::select()
+            .table(DBCS::TABLE)
+            .columns(E::field_names())
+            .order_by("id")
+            .fetch_all(dam.db_pool())
+            .await?;
 
         Ok(entities)
     }
 
     pub async fn update<DBCS, E>(
         _ctx: &RequestContext,
-        _dam: &DataAccessManager,
-        _data: E,
-    ) -> Result<i64>
-    where
-        DBCS: DbCrudServer,
-        E: for<'r> FromRow<'r, SqliteRow> + Unpin + Send,
-    {
-        unimplemented!()
-    }
-
-    pub async fn delete<DBCS, E>(
-        _ctx: &RequestContext,
         dam: &DataAccessManager,
         id: i64,
+        data: E,
     ) -> Result<()>
     where
         DBCS: DbCrudServer,
-        E: for<'r> FromRow<'r, SqliteRow> + Unpin + Send,
+        E: HasFields,
     {
-        let db = dam.db_pool();
-        let sql = format!("DELETE FROM {} WHERE id = $1", DBCS::TABLE);
+        let update_count = sqlb::update()
+            .table(DBCS::TABLE)
+            .and_where("id", "=", id)
+            .data(data.not_none_fields())
+            .exec(dam.db_pool())
+            .await?;
 
-        let delete_count: u64 = sqlx::query(&sql)
-            .bind(id)
-            .execute(db)
-            .await?
-            .rows_affected();
+        if update_count == 0 {
+            Err(Error::EntityNotFound {
+                entity: DBCS::TABLE,
+                id,
+            })
+        } else {
+            Ok(())
+        }
+    }
+
+    pub async fn delete<DBCS>(_ctx: &RequestContext, dam: &DataAccessManager, id: i64) -> Result<()>
+    where
+        DBCS: DbCrudServer,
+    {
+        let delete_count = sqlb::delete()
+            .table(DBCS::TABLE)
+            .and_where("id", "=", id)
+            .exec(dam.db_pool())
+            .await?;
 
         if delete_count == 0 {
             Err(Error::EntityNotFound {

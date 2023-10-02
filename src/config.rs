@@ -48,7 +48,7 @@ pub struct Config {
     /// TODO: document
     pub TOKEN_KEY: String,
     /// TODO: document
-    pub TOKEN_DURATION_IN_SECONDS: u32,
+    pub TOKEN_DURATION_IN_SECONDS: f64,
 }
 
 #[cfg(test)]
@@ -85,6 +85,6 @@ mod tests {
         assert_eq!(config.ASSETS_FOLDER, "assets");
         assert_eq!(config.PASSWORD_KEY, "password");
         assert_eq!(config.TOKEN_KEY, "token");
-        assert_eq!(config.TOKEN_DURATION_IN_SECONDS, 3600u32);
+        assert_eq!(config.TOKEN_DURATION_IN_SECONDS, 3600f64);
     }
 }

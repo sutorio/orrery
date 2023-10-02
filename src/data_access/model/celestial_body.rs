@@ -1,191 +1,96 @@
-use crate::data_access::{DataAccessManager, DbCrudAction, DbCrudServer, Error, Result};
+use crate::data_access::store::db::{DbCrudAction, DbCrudServer};
+use crate::data_access::{DataAccessManager, Result};
 use crate::RequestContext;
 use serde::{Deserialize, Serialize};
+use sqlb::Fields;
 use sqlx::FromRow;
 
 // -----------------------------------------------------------------------------
 // Types
 // -----------------------------------------------------------------------------
-const TABLE_NAME: &'static str = "celestial_body";
+
+// SQLite does not support enums. This is not a huge issue: a table can be created
+// to store the enum values, and then a foreign key can be used to reference them.
+// However, to save on boilerplate, this will be enforced outside of the database.
+// REVIEW: table + foreign keys is sensible, but is it worth the effort?
+
+pub enum CelestialRegion {
+    InnerSolarSystem,
+    OuterSolarSystem,
+    TransNeptunianRegion,
+    FarthestRegions,
+}
+
+pub enum CelestialSubregion {
+    InnerPlanets,
+    AsteroidBelt,
+    OuterPlanets,
+    Centaurs,
+    KuiperBelt,
+    ScatteredDisc,
+    DetachedObjects,
+}
 
 /// Returned from the data access layer, hence `Serialize`.
 /// This is the "entity" that is used by the application. It maps to database table/s,
 /// so sqlx's `FromRow` is implemented.
-#[derive(Clone, Debug, FromRow, Serialize)]
+#[derive(Clone, Debug, Fields, FromRow, Serialize)]
 pub struct CelestialBody {
     pub id: i64,
     pub name: String,
 }
 
 /// Sent to the data access layer, hence `Deserialize`.
-#[derive(Deserialize)]
+#[derive(Fields, Deserialize)]
 pub struct CelestialBodyCreate {
     pub name: String,
 }
 
 /// Sent to the data access layer, hence `Deserialize`.
-#[derive(Deserialize)]
+#[derive(Fields, Deserialize)]
 pub struct CelestialBodyUpdate {
     pub name: Option<String>,
 }
 
 // -----------------------------------------------------------------------------
-// Server
-//
-// TODO: this should be generalised into a trait + generic functions, and then
-//       implemented for each entity. This *should* allow the `Client` to just
-//       call the generic functions. However, this is currently difficult, see
-//       the notes in `src/data_access/mod.rs`.
+// Client
 // -----------------------------------------------------------------------------
 
-struct Server;
+pub struct Client;
 
-impl DbCrudServer for Server {
+impl DbCrudServer for Client {
     const TABLE: &'static str = "celestial_body";
 }
 
-impl Server {
-    async fn create(
-        _ctx: &RequestContext,
-        dac: &DataAccessManager,
+impl Client {
+    pub async fn create(
+        ctx: &RequestContext,
+        dam: &DataAccessManager,
         data: CelestialBodyCreate,
     ) -> Result<i64> {
-        let db = dac.db_pool();
-        let result = sqlx::query!(
-            r#"
-                INSERT INTO celestial_body (name)
-                VALUES ($1)
-            "#,
-            data.name
-        )
-        .execute(db)
-        .await?
-        .last_insert_rowid();
-
-        Ok(result)
+        DbCrudAction::create::<Self, _>(ctx, dam, data).await
     }
 
-    async fn read(
-        _ctx: &RequestContext,
+    pub async fn read(
+        ctx: &RequestContext,
         dam: &DataAccessManager,
         id: i64,
     ) -> Result<CelestialBody> {
-        DbCrudAction::read::<Self, _>(_ctx, dam, id).await
+        DbCrudAction::read::<Self, _>(ctx, dam, id).await
     }
 
-    async fn read_all(
-        _ctx: &RequestContext,
+    pub async fn read_all(
+        ctx: &RequestContext,
         dam: &DataAccessManager,
     ) -> Result<Vec<CelestialBody>> {
-        DbCrudAction::read_all::<Self, _>(_ctx, dam).await
+        DbCrudAction::read_all::<Self, _>(ctx, dam).await
     }
 
-    async fn update(
-        _ctx: &RequestContext,
-        _dam: &DataAccessManager,
-        _id: i64,
-        _data: CelestialBodyUpdate,
-    ) -> Result<i64> {
-        unimplemented!()
-    }
-
-    async fn delete(_ctx: &RequestContext, dam: &DataAccessManager, id: i64) -> Result<()> {
-        DbCrudAction::delete::<Self, CelestialBody>(_ctx, dam, id).await
+    pub async fn delete(ctx: &RequestContext, dam: &DataAccessManager, id: i64) -> Result<()> {
+        DbCrudAction::delete::<Self>(ctx, dam, id).await
     }
 }
 
 // -----------------------------------------------------------------------------
 // Tests
 // -----------------------------------------------------------------------------
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use crate::{RequestContext, _dev_utils::initialise_test_environment};
-    use anyhow::Result;
-    use serial_test::serial;
-
-    #[serial]
-    #[tokio::test]
-    async fn test_create_ok() -> Result<()> {
-        // Setup
-        let dam = initialise_test_environment().await;
-        let ctx = RequestContext::root_context();
-
-        // Fixtures
-        let fixture_name = "test_create_ok";
-
-        // Execution¬
-        let data = CelestialBodyCreate {
-            name: fixture_name.to_string(),
-        };
-        let result_id = Server::create(&ctx, &dam, data).await?;
-
-        // Verification
-        let (name,): (String,) = sqlx::query_as(
-            "
-                SELECT name
-                FROM celestial_body
-                WHERE id = $1
-            ",
-        )
-        .bind(result_id)
-        .fetch_one(dam.db_pool())
-        .await?;
-
-        assert_eq!(name, fixture_name);
-
-        // Cleanup
-        let delete_count = sqlx::query("DELETE FROM celestial_body WHERE id = $1")
-            .bind(result_id)
-            .execute(dam.db_pool())
-            .await?
-            .rows_affected();
-
-        assert_eq!(delete_count, 1, "Expected 1 row to be deleted");
-
-        Ok(())
-    }
-
-    #[serial]
-    #[tokio::test]
-    async fn test_get_not_found() -> Result<()> {
-        // Setup
-        let dam = initialise_test_environment().await;
-        let ctx = RequestContext::root_context();
-
-        // Execution¬
-        let result = Server::read(&ctx, &dam, 0).await;
-
-        assert!(matches!(
-            result,
-            Err(Error::EntityNotFound {
-                entity: TABLE_NAME,
-                id: 0
-            })
-        ));
-
-        Ok(())
-    }
-
-    #[serial]
-    #[tokio::test]
-    async fn test_delete_not_found() -> Result<()> {
-        // Setup
-        let dam = initialise_test_environment().await;
-        let ctx = RequestContext::root_context();
-
-        // Execution¬
-        let result = Server::delete(&ctx, &dam, 0).await;
-
-        assert!(matches!(
-            result,
-            Err(Error::EntityNotFound {
-                entity: TABLE_NAME,
-                id: 0
-            })
-        ));
-
-        Ok(())
-    }
-}

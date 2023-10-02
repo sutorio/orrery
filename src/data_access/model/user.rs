@@ -1,6 +1,7 @@
-use crate::data_access::{DataAccessManager, DbCrudAction, DbCrudServer, Error, Result};
-use crate::{RequestContext, security};
+use crate::data_access::{DataAccessManager, DbCrudAction, DbCrudServer, Result};
+use crate::{security, RequestContext};
 use serde::{Deserialize, Serialize};
+use sqlb::{Fields, HasFields};
 use sqlx::sqlite::SqliteRow;
 use sqlx::FromRow;
 
@@ -10,7 +11,7 @@ use sqlx::FromRow;
 const TABLE_NAME: &'static str = "user";
 
 /// Sent from the server to the client
-#[derive(Clone, Debug, FromRow, Serialize)]
+#[derive(Clone, Debug, Fields, FromRow, Serialize)]
 pub struct User {
     pub id: i64,
     pub username: String,
@@ -24,13 +25,13 @@ pub struct UserCreate {
 }
 
 /// Internal, second step of a user creation. This is an implementation detail.
-#[derive(Debug, Deserialize)]
-struct UserInsert {
-    username: String,
+#[derive(Debug, Deserialize, Fields)]
+pub struct UserInsert {
+    pub username: String,
 }
 
 /// Read-only, the information necessary to validate the user.
-#[derive(Clone, FromRow, Debug)]
+#[derive(Clone, Fields, FromRow, Debug)]
 pub struct UserLogin {
     pub id: i64,
     pub username: String,
@@ -40,7 +41,7 @@ pub struct UserLogin {
 }
 
 /// Read-only, subset of the `UserLogin`.
-#[derive(Clone, FromRow, Debug)]
+#[derive(Clone, FromRow, Fields, Debug)]
 pub struct UserAuth {
     pub id: i64,
     pub username: String,
@@ -49,7 +50,7 @@ pub struct UserAuth {
 
 /// Marker trait. This, by itself, does very little, but it allows the `User`
 /// related CRUD functions to easily use any of the `User{ACTION}` structs.
-pub trait UserBy: for<'r> FromRow<'r, SqliteRow> + Unpin + Send {}
+pub trait UserBy: HasFields + for<'r> FromRow<'r, SqliteRow> + Unpin + Send {}
 
 impl UserBy for User {}
 impl UserBy for UserLogin {}
@@ -57,11 +58,6 @@ impl UserBy for UserAuth {}
 
 // -----------------------------------------------------------------------------
 // Server
-//
-// TODO: this should be generalised into a trait + generic functions, and then
-//       implemented for each entity. This *should* allow the `Client` to just
-//       call the generic functions. However, this is currently difficult, see
-//       the notes in `src/data_access/mod.rs`.
 // -----------------------------------------------------------------------------
 
 pub struct Server;
@@ -71,25 +67,26 @@ impl DbCrudServer for Server {
 }
 
 impl Server {
-    pub async fn fetch_by_id<E>(ctx: &RequestContext, dam: &DataAccessManager, id: i64) -> Result<E>
+    pub async fn read<E>(ctx: &RequestContext, dam: &DataAccessManager, id: i64) -> Result<E>
     where
         E: UserBy,
     {
         DbCrudAction::read::<Self, _>(ctx, dam, id).await
     }
 
-    pub async fn fetch_by_username<E>(
-        ctx: &RequestContext,
+    pub async fn read_by_username<E>(
+        _ctx: &RequestContext,
         dam: &DataAccessManager,
         username: &str,
-    ) -> Result<E>
+    ) -> Result<Option<E>>
     where
         E: UserBy,
     {
-        let db = dam.db_pool();
-        let sql = format!("SELECT * FROM {} WHERE username = $1", TABLE_NAME);
-
-        let user = sqlx::query_as(&sql).bind(username).fetch_one(db).await?;
+        let user = sqlb::select()
+            .table(TABLE_NAME)
+            .and_where("username", "=", username)
+            .fetch_optional::<_, E>(dam.db_pool())
+            .await?;
 
         Ok(user)
     }
@@ -98,20 +95,19 @@ impl Server {
         ctx: &RequestContext,
         dam: &DataAccessManager,
         id: i64,
-        password_clear: &str,
+        cleartext_password: &str,
     ) -> Result<()> {
-        let db = dam.db_pool();
-        let user: UserLogin = Self::fetch_by_id(ctx, dam, id).await?;
+        let user: UserLogin = Self::read(ctx, dam, id).await?;
         let password = security::encrypt_password(&security::EncryptedContent {
-            content: password_clear.to_string(),
-            salt: user.pwd_salt.to_string(),. 
+            content: cleartext_password.to_string(),
+            salt: user.pwd_salt.to_string(),
         })?;
-        let sql = format!("UPDATE {} SET pwd = $1 WHERE id = $2", TABLE_NAME);
 
-        sqlx::query(&sql)
-            .bind(&password.to_string())
-            .bind(id)
-            .execute(db)
+        sqlb::update()
+            .table(Self::TABLE)
+            .and_where("id", "=", id)
+            .data(vec![("pwd", password.to_string()).into()])
+            .exec(dam.db_pool())
             .await?;
 
         Ok(())
