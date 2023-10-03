@@ -9,10 +9,12 @@ edition = "2021"
 # 2. tower: async service abstractions
 # 3. tower-http: http service abstractions
 # 4. axum: web framework
+# 5. sutorio_axum_utils_crypto: password/token creation/validation
 tokio = { version = "1.32.0", features = ["full"] }     # [1]
 tower = "0.4.13"                                        # [2]
 tower-http = { version = "0.4.3", features = ["full"] } # [3]
 axum = { version = "0.6.20", features = ["macros"] }    # [4]
+sutorio_axum_utils_crypto = { git: "https://github.com/sutorio/sutorio_axum_utils.git" } # [5]
 
 # Database
 # 1. sqlx: database driver. NOTE: the sqlx-cli tool should be installed.
@@ -53,18 +55,6 @@ envconfig = "0.10.0" # [1]
 serde = { version = "1.0.185", features = ["derive"] } # [1]
 serde_json = "1.0.105"                                 # [2]
 serde_with = "3.3.0"                                   # [3]
-
-# Security/cryptography
-# 1. hmac: HMAC-SHA256 implementation
-# 2. rand: de facto standard random number generation
-# 3. sha2: SHA256 implementation
-# 4. base64ct: base64 will be used to encode/format everything
-# 5. chrono: ISO-compliant time lib
-hmac = "0.12.1" # [1]
-rand = "0.8.5" # [2]
-sha2 = "0.10.7" # [3]
-base64ct = { version = "1.6.0", features = ["alloc"] } # [4]
-chrono = "0.4.31" # [5]
 
 [dev-dependencies]
 # Dev/testing
